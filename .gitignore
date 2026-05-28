@@ -1,0 +1,17 @@
+# Unreal Engine project specific ignores
+.vscode/
+.idea/
+.vs/
+*.code-workspace
+.DS_Store
+Thumbs.db
+*.exe
+*.out
+*.app
+*.ipa
+Binaries/*
+Build/*
+DerivedDataCache/*
+Intermediate/*
+Saved/*
+*_BuiltData.uasset
