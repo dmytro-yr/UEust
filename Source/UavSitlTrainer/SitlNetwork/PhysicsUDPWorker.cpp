@@ -4,8 +4,8 @@
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
 
-FPhysicsUDPWorker::FPhysicsUDPWorker(FVehicleNetworkConfig InConfig)
-	: Config(InConfig)
+FPhysicsUDPWorker::FPhysicsUDPWorker(FVehicleNetworkConfig InConfig, callback_t OnReceivedCallback)
+	: Config(InConfig), OnDataReceivedCallback(OnReceivedCallback)
 {
 	StopTaskCounter.Reset();
 }
@@ -76,6 +76,9 @@ uint32 FPhysicsUDPWorker::Run()
 					TArray<uint8> PayloadData;
 					PayloadData.Append(ReceiveBuffer.GetData(), BytesRead);
 					InboundActuatorQueue.Enqueue(PayloadData);
+					if (OnDataReceivedCallback) {
+						OnDataReceivedCallback(PayloadData);
+					}
 				}
 			}
 			FPlatformProcess::Sleep(0.001f);

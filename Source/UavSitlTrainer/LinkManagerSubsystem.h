@@ -31,7 +31,7 @@ struct FVehicleNetworkConfig
 };
 
 class FPhysicsUDPWorker;
-class FMavlinkUDPWorker;
+class FMavLinkUDPWorker;
 
 UCLASS()
 class UAVSITLTRAINER_API ULinkManagerSubsystem : public UGameInstanceSubsystem
@@ -53,18 +53,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mavlink SITL")
 	void TestPushPhysicsString(int32 VehicleId, const FString& TestJson);
 
-	UFUNCTION(BlueprintCallable, Category = "Mavlink SITL")
-	FString TestPopActuatorString(int32 VehicleId);
+	void FlushInboundGameThreadQueues();
+	// need to remove after testing
 
 private:
 	struct FVehicleThreadContainer
 	{
-		FPhysicsUDPWorker* PhysicsRunnable = nullptr;
-		FRunnableThread*   PhysicsThread = nullptr;
+		TSharedPtr<FPhysicsUDPWorker> PhysicsRunnable;
+		FRunnableThread*			  PhysicsThread = nullptr;
 
-		FMavlinkUDPWorker* MavlinkRunnable = nullptr;
-		FRunnableThread*   MavlinkThread = nullptr;
+		TSharedPtr<FMavLinkUDPWorker> MavLinkRunnable;
+		FRunnableThread*			  MavLinkThread = nullptr;
 	};
 
 	TMap<int32, FVehicleThreadContainer> ActiveVehicleThreads;
+	// testing queues for inbound actuator data, need to remove after testing
+	TQueue<TArray<uint8>, EQueueMode::Mpsc> InboundActuatorDataQueue;
 };

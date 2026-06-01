@@ -2,10 +2,10 @@
 
 #include "MavLinkUDPWorker.h"
 
-MavLinkUDPWorker::MavLinkUDPWorker()
+FMavLinkUDPWorker::FMavLinkUDPWorker()
 {
 }
 
-MavLinkUDPWorker::~MavLinkUDPWorker()
+FMavLinkUDPWorker::~FMavLinkUDPWorker()
 {
 }

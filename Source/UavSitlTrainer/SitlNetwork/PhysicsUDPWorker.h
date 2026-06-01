@@ -8,11 +8,13 @@
 #include "Sockets.h"
 #include "LinkManagerSubsystem.h"
 
+using callback_t = TFunction<void(TArray<uint8>&)>;
+
 class UAVSITLTRAINER_API FPhysicsUDPWorker : public FRunnable
 {
 
 public:
-	FPhysicsUDPWorker(FVehicleNetworkConfig Config);
+	FPhysicsUDPWorker(FVehicleNetworkConfig Config, callback_t OnReceivedCallback = nullptr);
 	virtual ~FPhysicsUDPWorker() override;
 
 	// FRunnable interface
@@ -30,4 +32,5 @@ private:
 	FSocket*				  TxSocket = nullptr;
 	FSocket*				  RxSocket = nullptr;
 	TSharedPtr<FInternetAddr> RemoteAddr;
+	callback_t				  OnDataReceivedCallback;
 };

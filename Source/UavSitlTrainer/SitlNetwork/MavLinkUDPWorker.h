@@ -6,9 +6,9 @@
 /**
  *
  */
-class UAVSITLTRAINER_API MavLinkUDPWorker
+class UAVSITLTRAINER_API FMavLinkUDPWorker
 {
 public:
-	MavLinkUDPWorker();
-	~MavLinkUDPWorker();
+	FMavLinkUDPWorker();
+	~FMavLinkUDPWorker();
 };
