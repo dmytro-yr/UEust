@@ -1,0 +1,3 @@
+[submodule "Source/UavSitlTrainer/ThirdParty/mavlink"]
+	path = Source/UavSitlTrainer/ThirdParty/mavlink
+	url = https://github.com/mavlink/c_library_v2
