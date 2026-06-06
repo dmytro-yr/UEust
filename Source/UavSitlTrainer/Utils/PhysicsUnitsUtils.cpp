@@ -13,31 +13,59 @@ FSitlTelemetry UPhysicsUnitsUtils::ConvertUEToSITL(
 {
 	FSitlTelemetry OutTelemetry;
 	OutTelemetry.Timestamp = Timestamp;
-	// UE5 to NED conversion with unit adjustments
-	// position (cm->m)
-	OutTelemetry.Position = UEPosition * 0.01f;
-	OutTelemetry.Position.Z = -OutTelemetry.Position.Z; // invert z for ned
 
-	// velocity (cm/s -> m/s)(-z)
-	OutTelemetry.Velocity = UEVelocity * 0.01f;
-	OutTelemetry.Velocity.Z = -OutTelemetry.Velocity.Z; // invert z for ned
+	// =========================================================================
+	// 1. WORLD SPACE TRANSFORMS (Unreal Left-Handed -> NED Right-Handed)
+	// =========================================================================
+	// Unreal: +X=North, +Y=East, +Z=Up (cm)
+	// NED:    +X=North, +Y=East, +Z=Down (m)
+	OutTelemetry.Position = FVector(UEPosition.X * 0.01f, UEPosition.Y * 0.01f, -UEPosition.Z * 0.01f);
+	OutTelemetry.Velocity = FVector(UEVelocity.X * 0.01f, UEVelocity.Y * 0.01f, -UEVelocity.Z * 0.01f);
+	OutTelemetry.Acceleration = FVector(UEAcceleration.X * 0.01f, UEAcceleration.Y * 0.01f, -UEAcceleration.Z * 0.01f);
 
-	// acceleration (cm/s^2 -> m/s^2)(-z)
-	OutTelemetry.Acceleration = UEAcceleration * 0.01f;
-	OutTelemetry.Acceleration.Z = -OutTelemetry.Acceleration.Z; // invert z for ned
+	// =========================================================================
+	// 2. VEHICLE ATTITUDE (Unreal Deg -> NED Radians Aerospace Standard)
+	// =========================================================================
+	FRotator UERotator = UE5Quaternion.Rotator();
+	OutTelemetry.Attitude.X = FMath::DegreesToRadians(UERotator.Roll);	 // Roll (Same)
+	OutTelemetry.Attitude.Y = FMath::DegreesToRadians(-UERotator.Pitch); // Pitch (Inverted)
+	OutTelemetry.Attitude.Z = FMath::DegreesToRadians(-UERotator.Yaw);	 // Yaw (Inverted)
 
-	FQuat	 NedQuat = FQuat(UE5Quaternion.X, UE5Quaternion.Y, -UE5Quaternion.Z, -UE5Quaternion.W); // convert to ned by inverting z and w
-	FRotator NedRotator = NedQuat.Rotator();
+	// =========================================================================
+	// 3. GYRO SENSOR (Left-Handed Global -> Right-Handed Local Body Frame)
+	// =========================================================================
+	// Un-rotate the global tracking velocity into the vehicle's relative local framework
+	FVector LocalAngVelRad = UE5Quaternion.UnrotateVector(UEAngularVelocity);
 
-	// attitude (roll, pitch, yaw) (deg -> rad)(-pitch, -yaw)
-	OutTelemetry.Attitude.X = FMath::DegreesToRadians(NedRotator.Roll);	 // roll
-	OutTelemetry.Attitude.Y = FMath::DegreesToRadians(NedRotator.Pitch); // pitch
-	OutTelemetry.Attitude.Z = FMath::DegreesToRadians(NedRotator.Yaw);	 // yaw
+	// Map to aerospace body rates: p (roll rate), q (pitch rate), r (yaw rate)
+	OutTelemetry.Imu.Gyro.X = LocalAngVelRad.X;	 // p (Roll Rate)
+	OutTelemetry.Imu.Gyro.Y = -LocalAngVelRad.Y; // q (Pitch Rate - Inverted for Right-Handed Body)
+	OutTelemetry.Imu.Gyro.Z = -LocalAngVelRad.Z; // r (Yaw Rate - Inverted for Right-Handed Body)
 
-	// angular velocity (roll, pitch, yaw) (deg/s -> rad/s)(-pitch, -yaw)
-	OutTelemetry.AngularVelocity.X = FMath::DegreesToRadians(-UEAngularVelocity.X); // roll
-	OutTelemetry.AngularVelocity.Y = FMath::DegreesToRadians(-UEAngularVelocity.Y); // pitch
-	OutTelemetry.AngularVelocity.Z = FMath::DegreesToRadians(UEAngularVelocity.Z);	// yaw
+	// =========================================================================
+	// 4. ACCELEROMETER SENSOR (Proper Acceleration with Gravity Compensation)
+	// =========================================================================
+	// Kinematic acceleration converted to meters
+	FVector NedWorldAcc = OutTelemetry.Acceleration;
+
+	// FIX: Inject Earth Gravity. Accelerometers read upwards acceleration relative to freefall.
+	// When at rest, an IMU experiences 1G (+9.80665 m/s^2) pulling UP away from the core of the earth.
+	// In NED coordinates, "Up" is the NEGATIVE Z direction.
+	FVector NedWorldAccWithGravity = NedWorldAcc + FVector(0.0f, 0.0f, -9.80665f);
+
+	// Convert our specific vehicle rotation context cleanly into the destination coordinate space
+	FQuat NedOrientation = FQuat::MakeFromRotator(FRotator(-UERotator.Pitch, -UERotator.Yaw, UERotator.Roll));
+
+	// Un-rotate the combined world vector into the aircraft body frame
+	FVector LocalAccBody = NedOrientation.UnrotateVector(NedWorldAccWithGravity);
+
+	// ArduPilot's JSON model expects "accel_body" to explicitly include gravity offsets
+	OutTelemetry.Imu.Accel.X = LocalAccBody.X;
+	OutTelemetry.Imu.Accel.Y = LocalAccBody.Y;
+	OutTelemetry.Imu.Accel.Z = -LocalAccBody.Z; // Match right-handed sensor direction layout
+
+	// General backward compatibility link
+	OutTelemetry.AngularVelocity = OutTelemetry.Imu.Gyro;
 
 	return OutTelemetry;
 }
@@ -45,13 +73,30 @@ FSitlTelemetry UPhysicsUnitsUtils::ConvertUEToSITL(
 FString UPhysicsUnitsUtils::SerializeTelemetryToJson(const FSitlTelemetry& Telemetry)
 {
 	FString JsonString;
-	JsonString.Reserve(512);
-	JsonString.Appendf(TEXT("{\"timestamp\":%.4f,"), Telemetry.Timestamp);
+	JsonString.Reserve(256); // Smaller footprint now that it's clean
+
+	// Enforce the strict leading carriage return newline (\n) required by SITL
+	JsonString.Append(TEXT("\n{"));
+
+	// Mandatory Field 1: Absolute Physics Timestamp
+	JsonString.Appendf(TEXT("\"timestamp\":%.4f,"), Telemetry.Timestamp);
+
+	// Mandatory Field 2: Nested IMU containing gyro and accel_body
+	JsonString.Appendf(TEXT("\"imu\":{\"gyro\":[%.4f,%.4f,%.4f],\"accel_body\":[%.4f,%.4f,%.4f]},"),
+		Telemetry.Imu.Gyro.X, Telemetry.Imu.Gyro.Y, Telemetry.Imu.Gyro.Z,
+		Telemetry.Imu.Accel.X, Telemetry.Imu.Accel.Y, Telemetry.Imu.Accel.Z);
+
+	// Mandatory Field 3: Global World Position (NED)
 	JsonString.Appendf(TEXT("\"position\":[%.4f,%.4f,%.4f],"), Telemetry.Position.X, Telemetry.Position.Y, Telemetry.Position.Z);
+
+	// Mandatory Field 4: Global World Velocity (NED)
 	JsonString.Appendf(TEXT("\"velocity\":[%.4f,%.4f,%.4f],"), Telemetry.Velocity.X, Telemetry.Velocity.Y, Telemetry.Velocity.Z);
-	JsonString.Appendf(TEXT("\"acceleration\":[%.4f,%.4f,%.4f],"), Telemetry.Acceleration.X, Telemetry.Acceleration.Y, Telemetry.Acceleration.Z);
-	JsonString.Appendf(TEXT("\"attitude\":[%.4f,%.4f,%.4f],"), Telemetry.Attitude.X, Telemetry.Attitude.Y, Telemetry.Attitude.Z);
-	JsonString.Appendf(TEXT("\"angular_velocity\":[%.4f,%.4f,%.4f]}"), Telemetry.AngularVelocity.X, Telemetry.AngularVelocity.Y, Telemetry.AngularVelocity.Z);
+
+	// Mandatory Field 5: Vehicle Orientation Attitude (Roll, Pitch, Yaw in Radians)
+	JsonString.Appendf(TEXT("\"attitude\":[%.4f,%.4f,%.4f]}"), Telemetry.Attitude.X, Telemetry.Attitude.Y, Telemetry.Attitude.Z);
+
+	// Enforce the strict trailing carriage return newline (\n)
+	JsonString.Append(TEXT("\n"));
 
 	return JsonString;
 }

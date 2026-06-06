@@ -7,10 +7,13 @@ public class UavSitlTrainer : ModuleRules
 	public UavSitlTrainer(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-
+		string MavlinkRootPath = Path.Combine(ModuleDirectory, "ThirdParty", "mavlink");
 		PublicIncludePaths.AddRange(new string[] {
-			ModuleDirectory, Path.Combine(ModuleDirectory, "")
+			ModuleDirectory, Path.Combine(ModuleDirectory, MavlinkRootPath)
 		});
+
+		PublicDefinitions.Add("MAVLINK_USE_MESSAGE_INFO=1");
+		PublicSystemIncludePaths.Add(MavlinkRootPath);
 
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Sockets", "Networking", "MathCore"

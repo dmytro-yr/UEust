@@ -7,12 +7,27 @@
 #include "PhysicsUnitsUtils.generated.h"
 
 USTRUCT(BlueprintType)
+struct FSitlImu
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "SITL Physics")
+	FVector Gyro = FVector::ZeroVector; // roll, pitch, yaw (rad/s)
+
+	UPROPERTY(BlueprintReadWrite, Category = "SITL Physics")
+	FVector Accel = FVector::ZeroVector; // x, y, z (m/s^2)
+};
+
+USTRUCT(BlueprintType)
 struct FSitlTelemetry
 {
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite, Category = "SITL Physics")
 	double Timestamp = 0.0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "SITL Physics")
+	FSitlImu Imu;
 
 	UPROPERTY(BlueprintReadWrite, Category = "SITL Physics")
 	FVector Position = FVector::ZeroVector; // ned (m)

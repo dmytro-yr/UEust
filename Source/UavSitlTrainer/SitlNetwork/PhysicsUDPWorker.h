@@ -6,6 +6,7 @@
 #include "HAL/Runnable.h"
 #include "Containers/Queue.h"
 #include "Sockets.h"
+#include "NetworkTypes.h"
 #include "LinkManagerSubsystem.h"
 
 using callback_t = TFunction<void(TArray<uint8>&)>;
@@ -22,6 +23,7 @@ public:
 	virtual uint32 Run() override;
 	virtual void   Stop() override;
 
+public:
 	TQueue<FString, EQueueMode::Mpsc>		OutboundPhysicsQueue;
 	TQueue<TArray<uint8>, EQueueMode::Mpsc> InboundActuatorQueue;
 

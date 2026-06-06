@@ -19,13 +19,13 @@ bool FPhysicsUDPWorker::Init()
 {
 	ISocketSubsystem* SocketSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
 	if (!SocketSubsystem) {
-		UE_LOG(LogTemp, Error, TEXT("Failed to get socket subsystem"));
+		UE_LOG(LogTemp, Error, TEXT("[PhysicsUDPWorker::Init] Failed to get socket subsystem"));
 		return false;
 	}
 
-	TxSocket = SocketSubsystem->CreateSocket(NAME_DGram, TEXT("SITL_Tx_Socket"), true);
+	TxSocket = SocketSubsystem->CreateSocket(NAME_DGram, TEXT("SITL_Tx_UDP_Socket"), true);
 	if (!TxSocket) {
-		UE_LOG(LogTemp, Error, TEXT("Failed to create Tx socket"));
+		UE_LOG(LogTemp, Error, TEXT("[PhysicsUDPWorker::Init] Failed to create Tx socket"));
 		return false;
 	}
 	TxSocket->SetNonBlocking(true);
@@ -37,9 +37,9 @@ bool FPhysicsUDPWorker::Init()
 	RemoteAddr->SetIp(TargetIP.Value);
 	RemoteAddr->SetPort(Config.PhysicsTxPort);
 
-	RxSocket = SocketSubsystem->CreateSocket(NAME_DGram, TEXT("SITL_Rx_Socket"), true);
+	RxSocket = SocketSubsystem->CreateSocket(NAME_DGram, TEXT("SITL_Rx_UDP_Socket"), true);
 	if (!RxSocket) {
-		UE_LOG(LogTemp, Error, TEXT("Failed to create Rx socket"))
+		UE_LOG(LogTemp, Error, TEXT("[PhysicsUDPWorker::Init] Failed to create Rx socket"))
 		return false;
 	}
 	RxSocket->SetNonBlocking(true);
@@ -54,8 +54,15 @@ bool FPhysicsUDPWorker::Init()
 
 uint32 FPhysicsUDPWorker::Run()
 {
+	if (!TxSocket || !RxSocket) {
+		UE_LOG(LogTemp, Error, TEXT("[PhysicsUDPWorker::Run] Sockets are not initialized. Exiting thread."));
+		return 1; // Exit with error code
+	}
 	TArray<uint8> ReceiveBuffer;
 	ReceiveBuffer.SetNumUninitialized(4096);
+
+	int32 InitialCounterValue = StopTaskCounter.GetValue();
+	checkf(!InitialCounterValue, TEXT("[PhysicsUDPWorker::Run] Assert Failed: StopTaskCounter initialized with a dirty state! Value: %d"), InitialCounterValue);
 
 	while (StopTaskCounter.GetValue() == 0) {
 		// UE5 to AP
@@ -67,7 +74,7 @@ uint32 FPhysicsUDPWorker::Run()
 		}
 		// AP to UE5
 		uint32 PendingDataSize = 0;
-		while (RxSocket->HasPendingData(PendingDataSize)) {
+		if (RxSocket->HasPendingData(PendingDataSize)) {
 			int32					  BytesRead = 0;
 			TSharedRef<FInternetAddr> SenderAddr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
 
@@ -81,8 +88,9 @@ uint32 FPhysicsUDPWorker::Run()
 					}
 				}
 			}
-			FPlatformProcess::Sleep(0.001f);
 		}
+
+		FPlatformProcess::Sleep(0.001f);
 	}
 	return 0;
 }
@@ -91,14 +99,17 @@ void FPhysicsUDPWorker::Stop()
 {
 	StopTaskCounter.Increment();
 
-	if (TxSocket) {
-		TxSocket->Close();
-		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(TxSocket);
-		TxSocket = nullptr;
-	}
-	if (RxSocket) {
-		RxSocket->Close();
-		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(RxSocket);
-		RxSocket = nullptr;
-	}
+	auto DestroySocket = [](FSocket*& Socket) {
+		if (!Socket) {
+			return;
+		}
+		Socket->Close();
+		if (auto SubSys = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)) {
+			SubSys->DestroySocket(Socket);
+		}
+		Socket = nullptr;
+	};
+
+	DestroySocket(TxSocket);
+	DestroySocket(RxSocket);
 }
