@@ -7,7 +7,7 @@
 #include "SitlNetwork/MavLinkIncludes.h"
 #include "MavLinkHeartbeatComponent.generated.h"
 
-class ULinkManagerSubsystem;
+class UMavVehicleLink;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMavLinkConnectionStatusChanged, bool, bIsConnected);
 
@@ -17,22 +17,15 @@ class UAVSITLTRAINER_API UMavLinkHeartbeatComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
 	UMavLinkHeartbeatComponent();
-	void HandleIncomingHeartbeat(int32 InVehicleId, const mavlink_heartbeat_t& DecodedHeartbeat);
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	void SendHeartbeat();
-
-	void HandleConnectionTimeout();
-
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SITL Network Config")
-	int32 VehicleId = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SITL Network Config")
+	int32 VehicleId = 1;
 
 	UPROPERTY(BlueprintAssignable, Category = "SITL Network Config")
 	FOnMavLinkConnectionStatusChanged OnConnectionStatusChanged;
@@ -41,11 +34,16 @@ public:
 	bool bIsConnected = false;
 
 private:
-	FTimerHandle HeartbeatSendTimer;
+	void HandleConnectionTimeout();
+	void SendHeartbeat();
+	void OnStatusFactChanged(FName Key, float Value);
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<UMavVehicleLink> MavVehicleLink;
+
+	FTimerHandle HeartbeatTimer;
 	FTimerHandle TimeoutTimer;
 	const float	 HeartbeatInterval = 1.0f;
 	const float	 ConnectionTimeout = 3.0f;
-
-	UPROPERTY(Transient)
-	TObjectPtr<ULinkManagerSubsystem> CachedLinkManager;
 };

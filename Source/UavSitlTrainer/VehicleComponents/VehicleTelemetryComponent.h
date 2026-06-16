@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "LinkManagerSubsystem.h"
 #include "VehicleTelemetryComponent.generated.h"
 
+class ULinkManagerSubsystem;
+class UMavVehicleLink;
 class UPrimitiveComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent), BlueprintType)
@@ -15,27 +16,23 @@ class UAVSITLTRAINER_API UVehicleTelemetryComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
 	UVehicleTelemetryComponent();
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-private:
-	UFUNCTION()
-	void HandleMavLinkParams(int32 InVehicleId, const FString& ParamName, float ParamValue);
-	UFUNCTION()
-	void HandleMavLinkAttitude(int32 InVehicleId, float Roll, float Pitch, float Yaw);
-
 public:
-	UPROPERTY(EditAnywhere, Category = "SITL Network Config")
-	int32 VehicleId = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SITL Network Config")
+	int32 VehicleId = 1;
 
 private:
 	UPROPERTY()
-	ULinkManagerSubsystem* LinkManager = nullptr;
+	TObjectPtr<ULinkManagerSubsystem> LinkManager = nullptr;
 
 	UPROPERTY()
-	UPrimitiveComponent* VehicleMesh = nullptr;
+	TObjectPtr<UMavVehicleLink> MavVehicleLink = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UPrimitiveComponent> VehicleMesh = nullptr;
 
 	double	ElapsedTime = 0.0;
 	FVector PrevVelocity = FVector::ZeroVector;

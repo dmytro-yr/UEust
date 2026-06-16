@@ -1,40 +1,28 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "HAL/Runnable.h"
-#include "Containers/Queue.h"
-#include "Sockets.h"
+#include "MavLinkWorkerBase.h"
 #include "NetworkTypes.h"
-#include "MavLinkIncludes.h"
-#include "LinkManagerSubsystem.h"
 
-using mavlink_callback_t = TFunction<void(const mavlink_message_t&)>;
-
-class UAVSITLTRAINER_API FMavLinkUDPWorker : public FRunnable
+class FMavLinkUDPWorker : public FMavLinkWorkerBase
 {
 public:
-	FMavLinkUDPWorker(FVehicleNetworkConfig Config, mavlink_callback_t OnReceivedCallback = nullptr);
+	FMavLinkUDPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels);
 	~FMavLinkUDPWorker() override;
 
-	// FRunnable interface
-	virtual bool   Init() override;
-	virtual uint32 Run() override;
-	virtual void   Stop() override;
+	bool Init() override;
+	void Stop() override;
 
-public:
-	// Thread safe outbound transmission pipeline
-	TQueue<mavlink_message_t, EQueueMode::Mpsc> OutboundMavlinkUDPQueue;
+protected:
+	void DrainOutbound() override;
+	void ReceiveInbound() override;
+	void OnSleep() override;
 
 private:
-	FVehicleNetworkConfig Config;
-	FThreadSafeCounter	  StopTaskCounter;
-
-	FSocket*				  MavlinkUDPSocket = nullptr;
-	TSharedPtr<FInternetAddr> RemoteAddr;
-	mavlink_callback_t		  OnMavlinkReceivedCallback;
-	// Mavlink parser state machines !!!! may be no need
-	mavlink_status_t  MavStatus;
-	mavlink_message_t MavMessage;
+	FVehicleNetworkConfig	  Config;
+	FNetworkChannels*		  NetworkChannels = nullptr;
+	FSocket*				  TxSocket = nullptr;
+	FSocket*				  RxSocket = nullptr;
+	TSharedPtr<FInternetAddr> TxAddr;
+	TArray<uint8>			  RecvBuf;
 };

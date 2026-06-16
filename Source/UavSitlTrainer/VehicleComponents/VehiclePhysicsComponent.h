@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "LinkManagerSubsystem.h"
 #include "VehiclePhysicsComponent.generated.h"
 
+class ULinkManagerSubsystem;
+class UMavVehicleLink;
 class UPrimitiveComponent;
 
 // Layout config which matching bones to network
@@ -40,33 +41,28 @@ class UAVSITLTRAINER_API UVehiclePhysicsComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
 	UVehiclePhysicsComponent();
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	void UpdateMotorThrottles(const float InThrottles[8]);
-	// TODO: Add API to accept automated Rotor configuration
-	// void ConfigureRotors(const TArray<FVehicleRotorConfig>& RotorConfigs);
-
-	UFUNCTION()
-	void HandleIncomingThrottles(int32 InVehicleId, const TArray<float>& NormalizedThrottles);
 
 private:
 	void ApplyMotorForces();
 
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SITL Network Config")
+	int32 VehicleId = 1;
+
 private:
-	UPROPERTY(EditAnywhere, Category = "SITL Network Config")
-	int32 VehicleId = 0;
+	UPROPERTY()
+	TObjectPtr<ULinkManagerSubsystem> LinkManager = nullptr;
 
 	UPROPERTY()
-	ULinkManagerSubsystem* LinkManager = nullptr;
-
-	float MotorThrottles[8] = { 0 };
+	TObjectPtr<UMavVehicleLink> MavVehicleLink = nullptr;
 
 	UPROPERTY()
-	UPrimitiveComponent* VehicleMesh = nullptr;
-
+	TObjectPtr<UPrimitiveComponent> VehicleMesh = nullptr;
 	// Active automated rotor configurations
 	UPROPERTY(EditAnywhere, Category = "SITL Physics")
 	TArray<FVehicleRotorConfig> ActiveRotorConfigs;

@@ -7,6 +7,8 @@
 #include "NetworkTypes.generated.h"
 
 static constexpr uint8 GCS_SYSTEM_ID = 255;
+static constexpr float PWM_MIN = 1100.f;
+static constexpr float PWM_RANGE = 800.f;
 
 USTRUCT(blueprintType)
 struct FVehicleNetworkConfig
@@ -44,4 +46,36 @@ struct FMavTelemetryFrame
 	int32 MessageId = 0;
 
 	mavlink_message_t Payload;
+};
+
+// ardupilot raw output
+struct FActuatorFrameOutputPacket
+{
+	uint16 Magic;
+	uint16 FrameRate;
+	uint32 FrameCount;
+	uint16 PWM[16];
+};
+
+struct FActuatorFrame
+{
+	uint16 MotorPulses[8] = {};
+
+	float NormalizedThrottle(int32 i) const
+	{
+		return FMath::Clamp((MotorPulses[i] - PWM_MIN) / PWM_RANGE, 0.f, 1.f);
+	}
+};
+
+struct FNetworkChannels
+{
+	// TCP channel  (MAVLink)
+	TQueue<mavlink_message_t, EQueueMode::Mpsc> InboundMavTCP;
+	TQueue<mavlink_message_t, EQueueMode::Mpsc> OutboundMavTCP;
+
+	// UDP channel  (physics)
+	TQueue<FActuatorFrame, EQueueMode::Mpsc> InboundMavUDP;
+	FCriticalSection						 OutboundUDPMutex;
+	FString									 LatestOutboundJson;
+	bool									 bHasNewTelemetry = false;
 };

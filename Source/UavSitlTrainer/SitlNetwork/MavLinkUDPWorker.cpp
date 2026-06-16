@@ -1,11 +1,7 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "MavLinkUDPWorker.h"
-#include "SocketSubsystem.h"
-#include "Interfaces/IPv4/IPv4Address.h"
 
-FMavLinkUDPWorker::FMavLinkUDPWorker(FVehicleNetworkConfig Config, mavlink_callback_t OnReceivedCallback)
-	: Config(Config), OnMavlinkReceivedCallback(OnReceivedCallback)
+FMavLinkUDPWorker::FMavLinkUDPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels)
+	: Config(Config), NetworkChannels(InNetworkChannels)
 {
 	StopTaskCounter.Reset();
 }
@@ -17,94 +13,84 @@ FMavLinkUDPWorker::~FMavLinkUDPWorker()
 
 bool FMavLinkUDPWorker::Init()
 {
-	ISocketSubsystem* SocketSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
-	if (!SocketSubsystem) {
-		UE_LOG(LogTemp, Error, TEXT("[MavLinkUDPWorker::Init] Failed to get socket subsystem"));
+	TxSocket = CreateSocket(NAME_DGram, TEXT("SITL_UDP_Tx"));
+	RxSocket = CreateSocket(NAME_DGram, TEXT("SITL_UDP_Rx"));
+	if (!TxSocket || !RxSocket) {
 		return false;
 	}
 
-	MavlinkUDPSocket = SocketSubsystem->CreateSocket(NAME_DGram, TEXT("SITL_Mavlink_UDP_Socket"), true);
-	if (!MavlinkUDPSocket) {
-		UE_LOG(LogTemp, Error, TEXT("[MavLinkUDPWorker::Init] Failed to create Mavlink socket"));
-		return false;
-	}
-	MavlinkUDPSocket->SetNonBlocking(true);
-	MavlinkUDPSocket->SetReuseAddr(true);
+	TxAddr = CreateAddr(Config.IPAdress, Config.PhysicsTxPort);
+	RxSocket->Bind(*CreateBindAddr(Config.PhysicsRxPort));
 
-	FIPv4Address TargetIP;
-	FIPv4Address::Parse(Config.IPAdress, TargetIP);
-	RemoteAddr = SocketSubsystem->CreateInternetAddr();
-	RemoteAddr->SetIp(TargetIP.Value);
-	RemoteAddr->SetPort(Config.MavlinkUDPPort);
+	RecvBuf.SetNumUninitialized(4096);
 
-	TSharedPtr<FInternetAddr> ListenAddr = SocketSubsystem->CreateInternetAddr();
-	ListenAddr->SetAnyAddress();
-	ListenAddr->SetPort(Config.MavlinkUDPPort);
-	MavlinkUDPSocket->Bind(*ListenAddr);
-	return MavlinkUDPSocket != nullptr;
-}
-
-uint32 FMavLinkUDPWorker::Run()
-{
-	if (!MavlinkUDPSocket) {
-		UE_LOG(LogTemp, Error, TEXT("[MavLinkUDPWorker::Run] Mavlink socket is not initialized. Exiting thread."));
-		return 1; // Exit with error code
-	}
-
-	TArray<uint8> ReceiveBuffer;
-	ReceiveBuffer.SetNumUninitialized(2096);
-	uint8 TxBuffer[MAVLINK_MAX_PACKET_LEN];
-	int32 InitialCounterValue = StopTaskCounter.GetValue();
-	checkf(!InitialCounterValue, TEXT("[MavLinkUDPWorker::Run] Assert Failed: StopTaskCounter initialized with a dirty state! Value: %d"), InitialCounterValue);
-
-	while (StopTaskCounter.GetValue() == 0) {
-		mavlink_message_t OutMessage;
-		while (OutboundMavlinkUDPQueue.Dequeue(OutMessage)) {
-			uint16 Lenght = mavlink_msg_to_send_buffer(TxBuffer, &OutMessage);
-			int32  BytesSent = 0;
-			UE_LOG(LogTemp, Warning, TEXT("[FMavLinkUDPWorker::Run] OutboundMavlinkUDPQueue Dequeue"));
-			MavlinkUDPSocket->SendTo(TxBuffer, Lenght, BytesSent, *RemoteAddr);
-		}
-		uint32 PendingDataSize = 0;
-		if (MavlinkUDPSocket->HasPendingData(PendingDataSize)) {
-			int32					  BytesRead = 0;
-			TSharedPtr<FInternetAddr> SendAddr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
-			FMemory::Memzero(ReceiveBuffer.GetData(), ReceiveBuffer.Num());
-			if (MavlinkUDPSocket->RecvFrom(ReceiveBuffer.GetData(), ReceiveBuffer.Num(), BytesRead, *SendAddr)) {
-				mavlink_status_t  LocalMavStatus;
-				mavlink_message_t LocalMavMsg;
-				FMemory::Memzero(&LocalMavStatus, sizeof(mavlink_status_t));
-				FMemory::Memzero(&LocalMavMsg, sizeof(mavlink_message_t));
-				UE_LOG(LogTemp, Warning, TEXT("[UDP] HasPendingData сказав ТАК. Реально прочитано байт (BytesRead): %d"), BytesRead);
-
-				for (int32 i = 0; i < BytesRead; ++i) {
-					if (mavlink_parse_char(MAVLINK_COMM_0, ReceiveBuffer[i], &LocalMavMsg, &LocalMavStatus) && OnMavlinkReceivedCallback) {
-						// TODO find another solution Сюди код дійде ТІЛЬКИ тоді, коли прилетить пакет від справжнього ArduPilot (Sys ID 1)
-						if (LocalMavMsg.sysid == GCS_SYSTEM_ID) {
-							continue;
-						}
-						UE_LOG(LogTemp, Warning, TEXT("[MavLink] ОТРИМАНО СТРУКТУРНИЙ ПАКЕТ ВІД БПЛА! Msg ID: %d | Sys ID: %d"),
-							LocalMavMsg.msgid,
-							LocalMavMsg.sysid);
-						OnMavlinkReceivedCallback(LocalMavMsg);
-					}
-				}
-			}
-		}
-
-		FPlatformProcess::Sleep(0.001f);
-	}
-	return 0;
+	return true;
 }
 
 void FMavLinkUDPWorker::Stop()
 {
-	StopTaskCounter.Increment();
-	if (MavlinkUDPSocket) {
-		MavlinkUDPSocket->Close();
-		if (auto SubSys = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)) {
-			SubSys->DestroySocket(MavlinkUDPSocket);
+	FMavLinkWorkerBase::Stop();
+	DestroySocket(TxSocket);
+	DestroySocket(RxSocket);
+}
+
+void FMavLinkUDPWorker::DrainOutbound()
+{
+	FString Json;
+	bool	bDataAvailable = false;
+
+	{
+		FScopeLock Lock(&NetworkChannels->OutboundUDPMutex);
+		if (NetworkChannels->bHasNewTelemetry) {
+			Json = NetworkChannels->LatestOutboundJson;
+			NetworkChannels->bHasNewTelemetry = false;
+			bDataAvailable = true;
 		}
-		MavlinkUDPSocket = nullptr;
+	}
+
+	if (bDataAvailable) {
+		FTCHARToUTF8 Conv(*Json);
+		int32		 Sent = 0;
+		int32		 BytesToSend = Conv.Length() + 1;
+		bool		 bIsJsonSended = TxSocket->SendTo((uint8*)Conv.Get(), BytesToSend, Sent, *TxAddr);
+	}
+}
+
+void FMavLinkUDPWorker::ReceiveInbound()
+{
+	uint32 Pending = 0;
+	int32  Read = 0;
+
+	TSharedRef<FInternetAddr> From = GetSocketSubsystem()->CreateInternetAddr();
+	if (RxSocket->RecvFrom(RecvBuf.GetData(), RecvBuf.Num(), Read, *From)
+		&& Read == sizeof(FActuatorFrameOutputPacket)) {
+
+		FActuatorFrameOutputPacket* Data = reinterpret_cast<FActuatorFrameOutputPacket*>(RecvBuf.GetData());
+
+		if (Data->Magic == 18458) {
+
+			TxAddr = From->Clone();
+			FActuatorFrame Frame;
+			FMemory::Memcpy(&Frame, RecvBuf.GetData(), sizeof(FActuatorFrame));
+			NetworkChannels->InboundMavUDP.Enqueue(Frame);
+		}
+	}
+}
+
+void FMavLinkUDPWorker::OnSleep()
+{
+	// Check the actual socket state one last time before sleeping
+	uint32 PendingDataSize = 0;
+	bool   bHadTraffic = RxSocket->HasPendingData(PendingDataSize) && PendingDataSize > 0;
+
+	if (bHadTraffic) {
+		// Telemetry frames are actively streaming!
+		// Sleep for the standard micro-nap (SleepSeconds) to maintain maximum frequency.
+		FPlatformProcess::Sleep(SleepSeconds);
+	}
+	else {
+		// The network pipe is dead quiet.
+		// Force a longer 10ms sleep to completely save your CPU cores from spinning.
+		FPlatformProcess::Sleep(0.01f);
 	}
 }

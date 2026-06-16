@@ -1,39 +1,28 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
-#include "CoreMinimal.h"
-#include "HAL/Runnable.h"
-#include "Containers/Queue.h"
-#include "Sockets.h"
+#include "MavLinkWorkerBase.h"
 #include "NetworkTypes.h"
-#include "MavLinkIncludes.h"
-#include "LinkManagerSubsystem.h"
 
-using callback_frame_recieved_t = TFunction<void(const FMavTelemetryFrame&)>;
-
-class UAVSITLTRAINER_API FMavLinkTCPWorker : public FRunnable
+class FMavLinkTCPWorker : public FMavLinkWorkerBase
 {
 public:
-	FMavLinkTCPWorker(const FVehicleNetworkConfig InConfig, callback_frame_recieved_t InOnFrameReceived);
-	~FMavLinkTCPWorker();
-	// FRunnable interface
-	virtual bool   Init() override;
-	virtual uint32 Run() override;
-	virtual void   Stop() override;
+	FMavLinkTCPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels);
+	~FMavLinkTCPWorker() override;
 
-	bool SendRawBytes(const uint8* Data, int32 Count);
+	bool Init() override;
+	void Stop() override;
+
+protected:
+	bool IsConnectionValid() override { return bIsConnected; }
+	void DrainOutbound() override;
+	void ReceiveInbound() override;
+	void OnAfterLoop() override;
 
 private:
 	FVehicleNetworkConfig Config;
-
-public:
-	callback_frame_recieved_t OnTelemetryFrameReceived;
-	bool					  bIsConnected = false;
-
-private:
-	FThreadSafeCounter StopTaskCounter;
-
-	FSocket*				  MavlinkTCPSocket = nullptr;
-	TSharedPtr<FInternetAddr> RemoteAddr;
+	FNetworkChannels*	  NetworkChannels = nullptr;
+	FSocket*			  Socket = nullptr;
+	bool				  bIsConnected = false;
+	mavlink_status_t	  ParseStatus = {};
+	TArray<uint8>		  RecvBuf;
 };

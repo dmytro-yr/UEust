@@ -3,6 +3,8 @@
 #include "VehicleTelemetryComponent.h"
 #include "Utils/PhysicsUnitsUtils.h"
 #include "Engine/World.h"
+#include "LinkManagerSubsystem.h"
+#include "SitlNetwork/MavVehicleLink.h"
 #include "GameFramework/Actor.h"
 
 // Sets default values
@@ -15,46 +17,39 @@ UVehicleTelemetryComponent::UVehicleTelemetryComponent()
 void UVehicleTelemetryComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	if (auto OwnerActor = GetOwner()) {
-		if (auto SkeletalMesh = OwnerActor->FindComponentByClass<USkeletalMeshComponent>()) {
+	if (const auto* OwnerActor = GetOwner()) {
+		if (auto* SkeletalMesh = OwnerActor->FindComponentByClass<USkeletalMeshComponent>()) {
 			VehicleMesh = Cast<UPrimitiveComponent>(SkeletalMesh);
 		}
 	}
+
 	if (!VehicleMesh) {
-		UE_LOG(LogTemp, Warning, TEXT("VehicleTelemetryComponent: Failed to find skeletal mesh"));
+		UE_LOG(LogTemp, Warning, TEXT("[VehicleTelemetryComponent::BeginPlay] Failed to find skeletal mesh"));
 	}
 	// Wait for AP to send FRAME_CLASS and FRAME_TYPE via MAVLink before enabling physics simulation to prevent potential issues with incorrect frame assumptions in AP
 	VehicleMesh->SetSimulatePhysics(false);
 
-	if (auto world = GetWorld()) {
-		if (auto gameInstance = world->GetGameInstance()) {
-			LinkManager = gameInstance->GetSubsystem<ULinkManagerSubsystem>();
+	if (const auto* World = GetWorld()) {
+		if (const UGameInstance* GI = World->GetGameInstance()) {
+			LinkManager = GI->GetSubsystem<ULinkManagerSubsystem>();
 		}
 	}
+
 	if (!LinkManager) {
-		UE_LOG(LogTemp, Warning, TEXT("VehiclePhysicsComponent: Failed to get LinkManagerSubsystem"));
+		UE_LOG(LogTemp, Warning, TEXT("[VehicleTelemetryComponent::BeginPlay] Failed to get LinkManagerSubsystem"));
 		return;
 	}
 
-	if (LinkManager) {
-		LinkManager->OnMavLinkParamReceived.AddDynamic(this, &UVehicleTelemetryComponent::HandleMavLinkParams);
-		LinkManager->OnMavLinkAttitudeReceived.AddDynamic(this, &UVehicleTelemetryComponent::HandleMavLinkAttitude);
+	MavVehicleLink = LinkManager->GetMavVehicleLink(VehicleId);
+	if (!MavVehicleLink) {
+		UE_LOG(LogTemp, Error, TEXT("[VehicleTelemetryComponent::BeginPlay] No MavVehicleLink for id %d"), VehicleId);
 	}
 }
 
 void UVehicleTelemetryComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (auto world = GetWorld()) {
-		if (auto gameInstance = world->GetGameInstance()) {
-			LinkManager = gameInstance->GetSubsystem<ULinkManagerSubsystem>();
-		}
-	}
 
-	if (!VehicleMesh || !LinkManager) {
-		UE_LOG(LogTemp, Warning, TEXT("VehicleTelemetryComponent: Failed to get vehicle mesh or link manager. Skipping tick."));
-		return;
-	}
 	ElapsedTime += DeltaTime;
 
 	FVector RawPos = VehicleMesh->GetComponentLocation();
@@ -68,30 +63,10 @@ void UVehicleTelemetryComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 	FSitlTelemetry Telemetry = UPhysicsUnitsUtils::ConvertUEToSITL(ElapsedTime, RawPos, RawVel, RawAcc, RawQuat, RawAngVelRad);
 	FString		   OutboundJson = UPhysicsUnitsUtils::SerializeTelemetryToJson(Telemetry);
-	// UE_LOG(LogTemp, Log, TEXT("[VehicleTelemetryComponent] Vehicle %d sending telemetry: %s"), VehicleId, *OutboundJson);
-	LinkManager->PushPhysicsJson(VehicleId, OutboundJson);
-}
-
-void UVehicleTelemetryComponent::HandleMavLinkParams(int32 InVehicleId, const FString& ParamName, float ParamValue)
-{
-	if (VehicleId != InVehicleId) {
-		return;
+	// TODO try to make it by command bus or other way
+	{
+		FScopeLock Lock(&MavVehicleLink->GetNetworkChannels()->OutboundUDPMutex);
+		MavVehicleLink->GetNetworkChannels()->LatestOutboundJson = OutboundJson;
+		MavVehicleLink->GetNetworkChannels()->bHasNewTelemetry = true;
 	}
-	if (ParamName.Equals(TEXT("FRAME_CLASS"))) {
-		UE_LOG(LogTemp, Log, TEXT("[VehicleTelemetryComponent]Vehicle %d received MAVLink param: %s = %f"), VehicleId, *ParamName, ParamValue);
-		VehicleMesh->SetSimulatePhysics(true);
-	}
-}
-
-void UVehicleTelemetryComponent::HandleMavLinkAttitude(int32 InVehicleId, float Roll, float Pitch, float Yaw)
-{
-	if (VehicleId != InVehicleId) {
-		return;
-	}
-	float	 ArduPilotRoll = FMath::RadiansToDegrees(Roll);
-	float	 ArduPilotPitch = FMath::RadiansToDegrees(Pitch);
-	float	 ArduPilotYaw = FMath::RadiansToDegrees(Yaw);
-	FRotator TrueRotation = VehicleMesh->GetComponentRotation();
-	UE_LOG(LogTemp, Log, TEXT("[VehicleTelemetryComponent] Vehicle %d received MAVLink attitude: Roll=%f, Pitch=%f, Yaw=%f. Current Actor Rotation: Roll=%f, Pitch=%f, Yaw=%f"),
-		VehicleId, ArduPilotRoll, ArduPilotPitch, ArduPilotYaw, TrueRotation.Roll, TrueRotation.Pitch, TrueRotation.Yaw);
 }

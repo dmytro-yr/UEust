@@ -75,28 +75,22 @@ FString UPhysicsUnitsUtils::SerializeTelemetryToJson(const FSitlTelemetry& Telem
 	FString JsonString;
 	JsonString.Reserve(256); // Smaller footprint now that it's clean
 
-	// Enforce the strict leading carriage return newline (\n) required by SITL
-	JsonString.Append(TEXT("\n{"));
-
 	// Mandatory Field 1: Absolute Physics Timestamp
-	JsonString.Appendf(TEXT("\"timestamp\":%.4f,"), Telemetry.Timestamp);
+	JsonString.Appendf(TEXT("{\"timestamp\":%.2f,"), Telemetry.Timestamp);
 
 	// Mandatory Field 2: Nested IMU containing gyro and accel_body
-	JsonString.Appendf(TEXT("\"imu\":{\"gyro\":[%.4f,%.4f,%.4f],\"accel_body\":[%.4f,%.4f,%.4f]},"),
+	JsonString.Appendf(TEXT("\"imu\":{\"gyro\":[%.3f,%.3f,%.3f],\"accel_body\":[%.3f,%.3f,%.3f]},"),
 		Telemetry.Imu.Gyro.X, Telemetry.Imu.Gyro.Y, Telemetry.Imu.Gyro.Z,
 		Telemetry.Imu.Accel.X, Telemetry.Imu.Accel.Y, Telemetry.Imu.Accel.Z);
 
 	// Mandatory Field 3: Global World Position (NED)
-	JsonString.Appendf(TEXT("\"position\":[%.4f,%.4f,%.4f],"), Telemetry.Position.X, Telemetry.Position.Y, Telemetry.Position.Z);
-
-	// Mandatory Field 4: Global World Velocity (NED)
-	JsonString.Appendf(TEXT("\"velocity\":[%.4f,%.4f,%.4f],"), Telemetry.Velocity.X, Telemetry.Velocity.Y, Telemetry.Velocity.Z);
+	JsonString.Appendf(TEXT("\"position\":[%.3f,%.3f,%.3f],"), Telemetry.Position.X, Telemetry.Position.Y, Telemetry.Position.Z);
 
 	// Mandatory Field 5: Vehicle Orientation Attitude (Roll, Pitch, Yaw in Radians)
-	JsonString.Appendf(TEXT("\"attitude\":[%.4f,%.4f,%.4f]}"), Telemetry.Attitude.X, Telemetry.Attitude.Y, Telemetry.Attitude.Z);
+	JsonString.Appendf(TEXT("\"attitude\":[%.3f,%.3f,%.3f],"), Telemetry.Attitude.X, Telemetry.Attitude.Y, Telemetry.Attitude.Z);
 
-	// Enforce the strict trailing carriage return newline (\n)
-	JsonString.Append(TEXT("\n"));
+	// Mandatory Field 4: Global World Velocity (NED)
+	JsonString.Appendf(TEXT("\"velocity\":[%.3f,%.3f,%.3f]}"), Telemetry.Velocity.X, Telemetry.Velocity.Y, Telemetry.Velocity.Z);
 
 	return JsonString;
 }
