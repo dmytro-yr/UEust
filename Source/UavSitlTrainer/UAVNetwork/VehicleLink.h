@@ -7,17 +7,17 @@
 #include "HAL/Runnable.h"
 #include "HAL/RunnableThread.h"
 #include "NetworkTypes.h"
-#include "MavLinkUDPWorker.h"
-#include "MavLinkTCPWorker.h"
+#include "UDPWorker.h"
+#include "TCPMavLinkWorker.h"
 
-#include "MavVehicleLink.generated.h"
+#include "VehicleLink.generated.h"
 
 class UMavLinkFactStore;
-class UMavLinkDispatcher;
-class UMavLinkCommandBus;
+class UInboundDispatcher;
+class UOutboundDispatcher;
 
 UCLASS()
-class UAVSITLTRAINER_API UMavVehicleLink : public UObject, public FTickableGameObject
+class UAVSITLTRAINER_API UVehicleLink : public UObject, public FTickableGameObject
 {
 	GENERATED_BODY()
 
@@ -35,10 +35,10 @@ public:
 	UMavLinkFactStore* GetFactStore() const { return FactStore; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "SITL")
-	UMavLinkCommandBus* GetCommandBus() const { return CommandBus; }
+	UOutboundDispatcher* GetOutboundDispatcher() const { return OutboundDispatcher; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "SITL")
-	UMavLinkDispatcher* GetDispatcher() const { return Dispatcher; }
+	UInboundDispatcher* GetInboundDispatcher() const { return InboundDispatcher; }
 	// TODO need avoid it, use command bus or dispatcher
 	FNetworkChannels* GetNetworkChannels() { return &NetworkChannels; }
 
@@ -51,8 +51,8 @@ private:
 
 	FNetworkChannels NetworkChannels;
 
-	TUniquePtr<FMavLinkUDPWorker> UDPWorker;
-	TUniquePtr<FMavLinkTCPWorker> TCPWorker;
+	TUniquePtr<FUDPWorker>		  UDPWorker;
+	TUniquePtr<FTCPMavLinkWorker> TCPWorker;
 
 	FRunnableThread* UDPThread = nullptr;
 	FRunnableThread* TCPThread = nullptr;
@@ -61,8 +61,8 @@ private:
 	TObjectPtr<UMavLinkFactStore> FactStore;
 
 	UPROPERTY()
-	TObjectPtr<UMavLinkCommandBus> CommandBus;
+	TObjectPtr<UOutboundDispatcher> OutboundDispatcher;
 
 	UPROPERTY()
-	TObjectPtr<UMavLinkDispatcher> Dispatcher;
+	TObjectPtr<UInboundDispatcher> InboundDispatcher;
 };

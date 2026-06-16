@@ -7,7 +7,7 @@
 #include "VehiclePhysicsComponent.generated.h"
 
 class ULinkManagerSubsystem;
-class UMavVehicleLink;
+class UVehicleLink;
 class UPrimitiveComponent;
 
 // Layout config which matching bones to network
@@ -59,7 +59,7 @@ private:
 	TObjectPtr<ULinkManagerSubsystem> LinkManager = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UMavVehicleLink> MavVehicleLink = nullptr;
+	TObjectPtr<UVehicleLink> VehicleLink = nullptr;
 
 	UPROPERTY()
 	TObjectPtr<UPrimitiveComponent> VehicleMesh = nullptr;

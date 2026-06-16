@@ -1,8 +1,8 @@
-// MavLinkCommandBus.cpp
-#include "MavLinkCommandBus.h"
+// OutboundDispatcher.cpp
+#include "OutboundDispatcher.h"
 #include "MavLinkFactStore.h"
 
-void UMavLinkCommandBus::Initialize(FNetworkChannels* InNetworkChannels, UMavLinkFactStore* FactStore, int32 InVehicleId)
+void UOutboundDispatcher::Initialize(FNetworkChannels* InNetworkChannels, UMavLinkFactStore* FactStore, int32 InVehicleId)
 {
 	NetworkChannels = InNetworkChannels;
 	VehicleId = InVehicleId;
@@ -12,34 +12,32 @@ void UMavLinkCommandBus::Initialize(FNetworkChannels* InNetworkChannels, UMavLin
 		});
 }
 
-void UMavLinkCommandBus::Enqueue(const mavlink_message_t& Msg, bool bUseTCP)
+void UOutboundDispatcher::Enqueue(const mavlink_message_t& Msg)
 {
-	if (bUseTCP) {
-		NetworkChannels->OutboundMavTCP.Enqueue(Msg);
-	}
-	else {
-		NetworkChannels->OutboundMavTCP.Enqueue(Msg); // TODO May be divide channels
-	}
+	NetworkChannels->OutboundMavTCP.Enqueue(Msg); // TODO May be divide channels
 }
 
-void UMavLinkCommandBus::SendCommand(uint16 CommandId,
-	const mavlink_message_t&				Msg,
-	bool									bUseTCP,
-	TFunction<void(bool)>					OnResult)
+void UOutboundDispatcher::Enqueue(const FString& OutboundJson)
+{
+	NetworkChannels->OutboundMavUDP.Enqueue(OutboundJson);
+}
+
+void UOutboundDispatcher::SendCommand(uint16 CommandId,
+	const mavlink_message_t&				 Msg,
+	TFunction<void(bool)>					 OnResult)
 {
 	FPendingCommand PendingCommand;
 	PendingCommand.CommandId = CommandId;
 	PendingCommand.Msg = Msg;
-	PendingCommand.bUseTCP = bUseTCP;
 	PendingCommand.RetriesLeft = MaxRetries;
 	PendingCommand.Deadline = FPlatformTime::Seconds() + RetryDelay;
 	PendingCommand.OnResult = MoveTemp(OnResult);
 	PendingCommands.Add(MoveTemp(PendingCommand));
 
-	NetworkChannels->OutboundMavTCP.Enqueue(Msg);
+	Enqueue(Msg);
 }
 
-void UMavLinkCommandBus::OnAckReceived(FName Key, float Result)
+void UOutboundDispatcher::OnAckReceived(FName Key, float Result)
 {
 	FString KeyStr = Key.ToString();
 	FString IdStr;
@@ -56,7 +54,7 @@ void UMavLinkCommandBus::OnAckReceived(FName Key, float Result)
 	}
 }
 
-void UMavLinkCommandBus::SendCommands()
+void UOutboundDispatcher::SendCommands()
 {
 	double Now = FPlatformTime::Seconds();
 	for (int32 i = PendingCommands.Num() - 1; i >= 0; --i) {
@@ -65,7 +63,7 @@ void UMavLinkCommandBus::SendCommands()
 			continue;
 
 		if (Command.RetriesLeft-- > 0) {
-			NetworkChannels->OutboundMavTCP.Enqueue(Command.Msg);
+			Enqueue(Command.Msg);
 			Command.Deadline = Now + RetryDelay;
 		}
 		else {

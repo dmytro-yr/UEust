@@ -1,20 +1,20 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "MavLinkTCPWorker.h"
+#include "TCPMavLinkWorker.h"
 
-FMavLinkTCPWorker::FMavLinkTCPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels)
+FTCPMavLinkWorker::FTCPMavLinkWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels)
 	: Config(Config), NetworkChannels(InNetworkChannels)
 {
 	StopTaskCounter.Reset();
 	SleepSeconds = 0.005f;
 }
 
-FMavLinkTCPWorker::~FMavLinkTCPWorker()
+FTCPMavLinkWorker::~FTCPMavLinkWorker()
 {
 	Stop();
 }
 
-bool FMavLinkTCPWorker::Init()
+bool FTCPMavLinkWorker::Init()
 {
 	Socket = CreateSocket(NAME_Stream, TEXT("SITL_TCP"));
 	if (!Socket) {
@@ -37,14 +37,14 @@ bool FMavLinkTCPWorker::Init()
 	return true;
 }
 
-void FMavLinkTCPWorker::Stop()
+void FTCPMavLinkWorker::Stop()
 {
-	FMavLinkWorkerBase::Stop();
+	FThreadWorkerBase::Stop();
 	bIsConnected = false;
 	DestroySocket(Socket);
 }
 
-void FMavLinkTCPWorker::DrainOutbound()
+void FTCPMavLinkWorker::DrainOutbound()
 {
 	mavlink_message_t Msg;
 	uint8			  TxBuf[MAVLINK_MAX_PACKET_LEN];
@@ -58,7 +58,7 @@ void FMavLinkTCPWorker::DrainOutbound()
 	}
 }
 
-void FMavLinkTCPWorker::ReceiveInbound()
+void FTCPMavLinkWorker::ReceiveInbound()
 {
 	int32 Read = 0;
 	if (!Socket->Recv(RecvBuf.GetData(), RecvBuf.Num(), Read)) {
@@ -72,13 +72,13 @@ void FMavLinkTCPWorker::ReceiveInbound()
 	mavlink_message_t Msg;
 	for (int32 i = 0; i < Read; ++i) {
 		if (mavlink_parse_char(MAVLINK_COMM_0, RecvBuf[i], &Msg, &ParseStatus)) {
-			UE_LOG(LogTemp, Warning, TEXT("[FMavLinkTCPWorker::ReceiveInbound] Message Exist"));
+			UE_LOG(LogTemp, Warning, TEXT("[FTCPMavLinkWorker::ReceiveInbound] Message Exist"));
 			NetworkChannels->InboundMavTCP.Enqueue(Msg);
 		}
 	}
 }
 
-void FMavLinkTCPWorker::OnAfterLoop()
+void FTCPMavLinkWorker::OnAfterLoop()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[TCPWorker::OnAfterLoop] Vehicle %d connection closed."), Config.VehicleId);
 }

@@ -1,17 +1,17 @@
-#include "MavLinkUDPWorker.h"
+#include "UDPWorker.h"
 
-FMavLinkUDPWorker::FMavLinkUDPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels)
+FUDPWorker::FUDPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels)
 	: Config(Config), NetworkChannels(InNetworkChannels)
 {
 	StopTaskCounter.Reset();
 }
 
-FMavLinkUDPWorker::~FMavLinkUDPWorker()
+FUDPWorker::~FUDPWorker()
 {
 	Stop();
 }
 
-bool FMavLinkUDPWorker::Init()
+bool FUDPWorker::Init()
 {
 	TxSocket = CreateSocket(NAME_DGram, TEXT("SITL_UDP_Tx"));
 	RxSocket = CreateSocket(NAME_DGram, TEXT("SITL_UDP_Rx"));
@@ -27,28 +27,19 @@ bool FMavLinkUDPWorker::Init()
 	return true;
 }
 
-void FMavLinkUDPWorker::Stop()
+void FUDPWorker::Stop()
 {
-	FMavLinkWorkerBase::Stop();
+	FThreadWorkerBase::Stop();
 	DestroySocket(TxSocket);
 	DestroySocket(RxSocket);
 }
 
-void FMavLinkUDPWorker::DrainOutbound()
+void FUDPWorker::DrainOutbound()
 {
 	FString Json;
-	bool	bDataAvailable = false;
 
-	{
-		FScopeLock Lock(&NetworkChannels->OutboundUDPMutex);
-		if (NetworkChannels->bHasNewTelemetry) {
-			Json = NetworkChannels->LatestOutboundJson;
-			NetworkChannels->bHasNewTelemetry = false;
-			bDataAvailable = true;
-		}
-	}
+	if (NetworkChannels->OutboundMavUDP.Dequeue(Json)) {
 
-	if (bDataAvailable) {
 		FTCHARToUTF8 Conv(*Json);
 		int32		 Sent = 0;
 		int32		 BytesToSend = Conv.Length() + 1;
@@ -56,7 +47,7 @@ void FMavLinkUDPWorker::DrainOutbound()
 	}
 }
 
-void FMavLinkUDPWorker::ReceiveInbound()
+void FUDPWorker::ReceiveInbound()
 {
 	uint32 Pending = 0;
 	int32  Read = 0;
@@ -77,7 +68,7 @@ void FMavLinkUDPWorker::ReceiveInbound()
 	}
 }
 
-void FMavLinkUDPWorker::OnSleep()
+void FUDPWorker::OnSleep()
 {
 	// Check the actual socket state one last time before sleeping
 	uint32 PendingDataSize = 0;

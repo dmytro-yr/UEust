@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "SitlNetwork/MavLinkIncludes.h"
+#include "UAVNetwork/MavLinkIncludes.h"
 #include "MavLinkHeartbeatComponent.generated.h"
 
-class UMavVehicleLink;
+class UVehicleLink;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMavLinkConnectionStatusChanged, bool, bIsConnected);
 
@@ -40,7 +40,7 @@ private:
 
 private:
 	UPROPERTY(Transient)
-	TObjectPtr<UMavVehicleLink> MavVehicleLink;
+	TObjectPtr<UVehicleLink> VehicleLink;
 
 	FTimerHandle HeartbeatTimer;
 	FTimerHandle TimeoutTimer;

@@ -1,14 +1,14 @@
 
 #pragma once
 
-#include "MavLinkWorkerBase.h"
+#include "ThreadWorkerBase.h"
 #include "NetworkTypes.h"
 
-class FMavLinkUDPWorker : public FMavLinkWorkerBase
+class FUDPWorker : public FThreadWorkerBase
 {
 public:
-	FMavLinkUDPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels);
-	~FMavLinkUDPWorker() override;
+	FUDPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels);
+	~FUDPWorker() override;
 
 	bool Init() override;
 	void Stop() override;

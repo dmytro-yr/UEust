@@ -1,8 +1,8 @@
 #include "MavLinkHeartbeatComponent.h"
 #include "LinkManagerSubsystem.h"
-#include "SitlNetwork/MavVehicleLink.h"
-#include "SitlNetwork/MavLinkFactStore.h"
-#include "SitlNetwork/MavLinkCommandBus.h"
+#include "UAVNetwork/VehicleLink.h"
+#include "UAVNetwork/MavLinkFactStore.h"
+#include "UAVNetwork/OutboundDispatcher.h"
 
 // Sets default values for this component's properties
 UMavLinkHeartbeatComponent::UMavLinkHeartbeatComponent()
@@ -27,15 +27,15 @@ void UMavLinkHeartbeatComponent::BeginPlay()
 			return;
 		}
 
-		MavVehicleLink = LinkManager->GetMavVehicleLink(VehicleId);
+		VehicleLink = LinkManager->GetVehicleLink(VehicleId);
 	}
 
-	if (!MavVehicleLink) {
-		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::BeginPlay] No MavVehicleLink for id %d"), VehicleId);
+	if (!VehicleLink) {
+		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::BeginPlay] No VehicleLink for id %d"), VehicleId);
 		return;
 	}
 
-	MavVehicleLink->GetFactStore()->Status.OnAnyChanged.AddUObject(this, &UMavLinkHeartbeatComponent::OnStatusFactChanged);
+	VehicleLink->GetFactStore()->Status.OnAnyChanged.AddUObject(this, &UMavLinkHeartbeatComponent::OnStatusFactChanged);
 
 	World->GetTimerManager().SetTimer(
 		HeartbeatTimer,
@@ -50,8 +50,8 @@ void UMavLinkHeartbeatComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
 	if (auto World = GetWorld()) {
 		World->GetTimerManager().ClearTimer(HeartbeatTimer);
 		World->GetTimerManager().ClearTimer(TimeoutTimer);
-		if (MavVehicleLink) {
-			MavVehicleLink->GetFactStore()->Status.OnAnyChanged.RemoveAll(this);
+		if (VehicleLink) {
+			VehicleLink->GetFactStore()->Status.OnAnyChanged.RemoveAll(this);
 		}
 	}
 
@@ -60,8 +60,8 @@ void UMavLinkHeartbeatComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
 
 void UMavLinkHeartbeatComponent::SendHeartbeat()
 {
-	if (!MavVehicleLink) {
-		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::SendHeartbeat] No MavVehicleLink for id %d"), VehicleId);
+	if (!VehicleLink) {
+		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::SendHeartbeat] No VehicleLink for id %d"), VehicleId);
 	}
 
 	mavlink_message_t	Msg;
@@ -72,11 +72,9 @@ void UMavLinkHeartbeatComponent::SendHeartbeat()
 	Data.autopilot = MAV_AUTOPILOT_INVALID;
 	Data.base_mode = 0;
 	Data.system_status = MAV_STATE_ACTIVE;
-	SET_WARN_COLOR(COLOR_CYAN);
-	UE_LOG(LogTemp, Log, TEXT("[UMavLinkHeartbeatComponent::SendHeartbeat] Sended for MavVehicleLink with id %d"), VehicleId);
-	CLEAR_WARN_COLOR();
+	UE_LOG(LogTemp, Log, TEXT("CmdLog:[UMavLinkHeartbeatComponent::SendHeartbeat] Sended for VehicleLink with id %d"), VehicleId);
 	mavlink_msg_heartbeat_encode(GCS_SYSTEM_ID, MAV_COMP_ID_MISSIONPLANNER, &Msg, &Data);
-	MavVehicleLink->GetCommandBus()->Enqueue(Msg);
+	VehicleLink->GetOutboundDispatcher()->Enqueue(Msg);
 }
 
 void UMavLinkHeartbeatComponent::OnStatusFactChanged(FName Key, float Value)

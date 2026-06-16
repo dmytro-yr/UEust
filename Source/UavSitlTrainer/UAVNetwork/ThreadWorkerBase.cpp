@@ -1,6 +1,6 @@
-#include "MavLinkWorkerBase.h"
+#include "ThreadWorkerBase.h"
 
-uint32 FMavLinkWorkerBase::Run()
+uint32 FThreadWorkerBase::Run()
 {
 	OnBeforeLoop();
 	while (StopTaskCounter.GetValue() == 0 && IsConnectionValid()) {
@@ -12,7 +12,7 @@ uint32 FMavLinkWorkerBase::Run()
 	return 0;
 }
 
-FSocket* FMavLinkWorkerBase::CreateSocket(FName Type, const FString& Name)
+FSocket* FThreadWorkerBase::CreateSocket(FName Type, const FString& Name)
 {
 	FSocket* Socket = GetSocketSubsystem()->CreateSocket(Type, Name, true);
 	if (Socket) {
@@ -22,7 +22,7 @@ FSocket* FMavLinkWorkerBase::CreateSocket(FName Type, const FString& Name)
 	return Socket;
 }
 
-TSharedPtr<FInternetAddr> FMavLinkWorkerBase::CreateAddr(const FString& IP, int32 Port)
+TSharedPtr<FInternetAddr> FThreadWorkerBase::CreateAddr(const FString& IP, int32 Port)
 {
 	FIPv4Address ParsedIP;
 	FIPv4Address::Parse(IP, ParsedIP);
@@ -32,7 +32,7 @@ TSharedPtr<FInternetAddr> FMavLinkWorkerBase::CreateAddr(const FString& IP, int3
 	return Addr;
 }
 
-TSharedPtr<FInternetAddr> FMavLinkWorkerBase::CreateBindAddr(int32 Port)
+TSharedPtr<FInternetAddr> FThreadWorkerBase::CreateBindAddr(int32 Port)
 {
 	TSharedPtr<FInternetAddr> Addr = GetSocketSubsystem()->CreateInternetAddr();
 	Addr->SetAnyAddress();
@@ -40,7 +40,7 @@ TSharedPtr<FInternetAddr> FMavLinkWorkerBase::CreateBindAddr(int32 Port)
 	return Addr;
 }
 
-void FMavLinkWorkerBase::DestroySocket(FSocket*& Socket)
+void FThreadWorkerBase::DestroySocket(FSocket*& Socket)
 {
 	if (!Socket) {
 		return;

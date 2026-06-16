@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SitlNetwork/MavLinkHandlers/MavHandlerBase.h"
+#include "UAVNetwork/ReceiveHandlers/HandlerBase.h"
 
 struct FMavCommandAckHandler : FMavHandlerBase
 {

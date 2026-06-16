@@ -4,8 +4,8 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "LinkManagerSubsystem.h"
-#include "SitlNetwork/MavVehicleLink.h"
-#include "SitlNetwork/MavLinkFactStore.h"
+#include "UAVNetwork/VehicleLink.h"
+#include "UAVNetwork/MavLinkFactStore.h"
 
 // Sets default values
 UVehiclePhysicsComponent::UVehiclePhysicsComponent()
@@ -37,8 +37,8 @@ void UVehiclePhysicsComponent::BeginPlay()
 		return;
 	}
 
-	MavVehicleLink = LinkManager->GetMavVehicleLink(VehicleId);
-	if (!MavVehicleLink) {
+	VehicleLink = LinkManager->GetVehicleLink(VehicleId);
+	if (!VehicleLink) {
 	}
 }
 
@@ -73,7 +73,7 @@ void UVehiclePhysicsComponent::ApplyMotorForces()
 		FName Key(*FString::Printf(TEXT("motor_%d"), CurrentRotor.RotorIndex));
 		UE_LOG(LogTemp, Warning, TEXT("[UVehiclePhysicsComponent::ApplyMotorForces] We inside cycle apply motor forces"));
 
-		if (MavVehicleLink->GetFactStore()->Actuators.GetValue(Key, Throttle)) {
+		if (VehicleLink->GetFactStore()->Actuators.GetValue(Key, Throttle)) {
 
 			float CalculatedForce = Throttle * CurrentRotor.RotorMaxThrustNewtons * 100.0f; // Convert from N to Unreal units (cm*kg/s^2)
 

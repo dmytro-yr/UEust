@@ -5,10 +5,10 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Tickable.h"
-#include "SitlNetwork/NetworkTypes.h"
+#include "UAVNetwork/NetworkTypes.h"
 #include "LinkManagerSubsystem.generated.h"
 
-class UMavVehicleLink;
+class UVehicleLink;
 
 UCLASS()
 class UAVSITLTRAINER_API ULinkManagerSubsystem : public UGameInstanceSubsystem
@@ -29,9 +29,9 @@ public:
 	bool IsVehicleConnected(int32 VehicleId) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "SITL")
-	UMavVehicleLink* GetMavVehicleLink(int32 VehicleId) const;
+	UVehicleLink* GetVehicleLink(int32 VehicleId) const;
 
 private:
 	UPROPERTY()
-	TMap<int32, TObjectPtr<UMavVehicleLink>> MavVehicleLinks;
+	TMap<int32, TObjectPtr<UVehicleLink>> VehicleLinks;
 };

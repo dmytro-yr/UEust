@@ -4,8 +4,9 @@
 #include "Utils/PhysicsUnitsUtils.h"
 #include "Engine/World.h"
 #include "LinkManagerSubsystem.h"
-#include "SitlNetwork/MavVehicleLink.h"
 #include "GameFramework/Actor.h"
+#include "UAVNetwork/VehicleLink.h"
+#include "UAVNetwork/OutboundDispatcher.h"
 
 // Sets default values
 UVehicleTelemetryComponent::UVehicleTelemetryComponent()
@@ -40,9 +41,9 @@ void UVehicleTelemetryComponent::BeginPlay()
 		return;
 	}
 
-	MavVehicleLink = LinkManager->GetMavVehicleLink(VehicleId);
-	if (!MavVehicleLink) {
-		UE_LOG(LogTemp, Error, TEXT("[VehicleTelemetryComponent::BeginPlay] No MavVehicleLink for id %d"), VehicleId);
+	VehicleLink = LinkManager->GetVehicleLink(VehicleId);
+	if (!VehicleLink) {
+		UE_LOG(LogTemp, Error, TEXT("[VehicleTelemetryComponent::BeginPlay] No VehicleLink for id %d"), VehicleId);
 	}
 }
 
@@ -63,10 +64,7 @@ void UVehicleTelemetryComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 	FSitlTelemetry Telemetry = UPhysicsUnitsUtils::ConvertUEToSITL(ElapsedTime, RawPos, RawVel, RawAcc, RawQuat, RawAngVelRad);
 	FString		   OutboundJson = UPhysicsUnitsUtils::SerializeTelemetryToJson(Telemetry);
-	// TODO try to make it by command bus or other way
-	{
-		FScopeLock Lock(&MavVehicleLink->GetNetworkChannels()->OutboundUDPMutex);
-		MavVehicleLink->GetNetworkChannels()->LatestOutboundJson = OutboundJson;
-		MavVehicleLink->GetNetworkChannels()->bHasNewTelemetry = true;
+	if (VehicleLink && VehicleLink->GetOutboundDispatcher()) {
+		VehicleLink->GetOutboundDispatcher()->Enqueue(OutboundJson);
 	}
 }

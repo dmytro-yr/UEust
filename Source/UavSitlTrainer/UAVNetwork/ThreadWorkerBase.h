@@ -6,7 +6,7 @@
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
 
-class FMavLinkWorkerBase : public FRunnable
+class FThreadWorkerBase : public FRunnable
 {
 public:
 	virtual bool   Init() override { return true; }

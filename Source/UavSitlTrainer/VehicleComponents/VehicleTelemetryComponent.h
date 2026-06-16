@@ -7,7 +7,7 @@
 #include "VehicleTelemetryComponent.generated.h"
 
 class ULinkManagerSubsystem;
-class UMavVehicleLink;
+class UVehicleLink;
 class UPrimitiveComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent), BlueprintType)
@@ -29,7 +29,7 @@ private:
 	TObjectPtr<ULinkManagerSubsystem> LinkManager = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UMavVehicleLink> MavVehicleLink = nullptr;
+	TObjectPtr<UVehicleLink> VehicleLink = nullptr;
 
 	UPROPERTY()
 	TObjectPtr<UPrimitiveComponent> VehicleMesh = nullptr;

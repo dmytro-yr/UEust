@@ -9,6 +9,7 @@
 static constexpr uint8 GCS_SYSTEM_ID = 255;
 static constexpr float PWM_MIN = 1100.f;
 static constexpr float PWM_RANGE = 800.f;
+#define RAW_ACTUATORS_OUTPUT FActuatorFrame::MsgId
 
 USTRUCT(blueprintType)
 struct FVehicleNetworkConfig
@@ -59,7 +60,8 @@ struct FActuatorFrameOutputPacket
 
 struct FActuatorFrame
 {
-	uint16 MotorPulses[8] = {};
+	static constexpr uint32 MsgId = 181600;
+	uint16					MotorPulses[16] = {};
 
 	float NormalizedThrottle(int32 i) const
 	{
@@ -75,7 +77,5 @@ struct FNetworkChannels
 
 	// UDP channel  (physics)
 	TQueue<FActuatorFrame, EQueueMode::Mpsc> InboundMavUDP;
-	FCriticalSection						 OutboundUDPMutex;
-	FString									 LatestOutboundJson;
-	bool									 bHasNewTelemetry = false;
+	TQueue<FString, EQueueMode::Mpsc>		 OutboundMavUDP;
 };

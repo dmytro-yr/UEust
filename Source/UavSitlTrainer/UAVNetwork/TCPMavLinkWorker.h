@@ -1,13 +1,13 @@
 #pragma once
 
-#include "MavLinkWorkerBase.h"
+#include "ThreadWorkerBase.h"
 #include "NetworkTypes.h"
 
-class FMavLinkTCPWorker : public FMavLinkWorkerBase
+class FTCPMavLinkWorker : public FThreadWorkerBase
 {
 public:
-	FMavLinkTCPWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels);
-	~FMavLinkTCPWorker() override;
+	FTCPMavLinkWorker(const FVehicleNetworkConfig& Config, FNetworkChannels* InNetworkChannels);
+	~FTCPMavLinkWorker() override;
 
 	bool Init() override;
 	void Stop() override;

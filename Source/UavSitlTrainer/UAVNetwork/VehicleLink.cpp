@@ -1,21 +1,21 @@
-#include "MavVehicleLink.h"
-#include "MavLinkUDPWorker.h"
-#include "MavLinkTCPWorker.h"
-#include "MavLinkDispatcher.h"
-#include "MavLinkCommandBus.h"
+#include "VehicleLink.h"
+#include "UDPWorker.h"
+#include "TCPMavLinkWorker.h"
+#include "InboundDispatcher.h"
+#include "OutboundDispatcher.h"
 
-bool UMavVehicleLink::Initialize(const FVehicleNetworkConfig& Config)
+bool UVehicleLink::Initialize(const FVehicleNetworkConfig& Config)
 {
 	VehicleId = Config.VehicleId;
 	FactStore = NewObject<UMavLinkFactStore>(this);
-	CommandBus = NewObject<UMavLinkCommandBus>(this);
-	Dispatcher = NewObject<UMavLinkDispatcher>(this);
+	OutboundDispatcher = NewObject<UOutboundDispatcher>(this);
+	InboundDispatcher = NewObject<UInboundDispatcher>(this);
 
-	CommandBus->Initialize(&NetworkChannels, FactStore, VehicleId);
-	Dispatcher->Initialize(&NetworkChannels, FactStore);
+	OutboundDispatcher->Initialize(&NetworkChannels, FactStore, VehicleId);
+	InboundDispatcher->Initialize(&NetworkChannels, FactStore);
 
-	UDPWorker = MakeUnique<FMavLinkUDPWorker>(Config, &NetworkChannels);
-	TCPWorker = MakeUnique<FMavLinkTCPWorker>(Config, &NetworkChannels);
+	UDPWorker = MakeUnique<FUDPWorker>(Config, &NetworkChannels);
+	TCPWorker = MakeUnique<FTCPMavLinkWorker>(Config, &NetworkChannels);
 
 	UDPThread = FRunnableThread::Create(UDPWorker.Get(), *FString::Printf(TEXT("SITL_UDP_%d"), VehicleId), 0, TPri_AboveNormal);
 	TCPThread = FRunnableThread::Create(TCPWorker.Get(), *FString::Printf(TEXT("SITL_UDP_%d"), VehicleId), 0, TPri_AboveNormal);
@@ -23,18 +23,18 @@ bool UMavVehicleLink::Initialize(const FVehicleNetworkConfig& Config)
 	return UDPThread && TCPThread;
 }
 
-void UMavVehicleLink::Tick(float DeltaTime)
+void UVehicleLink::Tick(float DeltaTime)
 {
-	Dispatcher->ReceiveFacts(GFrameCounter);
-	CommandBus->SendCommands();
+	InboundDispatcher->ReceiveFacts(GFrameCounter);
+	OutboundDispatcher->SendCommands();
 }
 
-ETickableTickType UMavVehicleLink::GetTickableTickType() const
+ETickableTickType UVehicleLink::GetTickableTickType() const
 {
 	return ETickableTickType::Conditional;
 }
 
-bool UMavVehicleLink::IsTickable() const
+bool UVehicleLink::IsTickable() const
 {
 	if (HasAnyFlags(RF_ClassDefaultObject) || IsTemplate()) {
 		return false;
@@ -52,12 +52,12 @@ bool UMavVehicleLink::IsTickable() const
 	return true;
 }
 
-TStatId UMavVehicleLink::GetStatId() const
+TStatId UVehicleLink::GetStatId() const
 {
-	RETURN_QUICK_DECLARE_CYCLE_STAT(UMavVehicleLink, STATGROUP_Tickables);
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UVehicleLink, STATGROUP_Tickables);
 }
 
-void UMavVehicleLink::Shutdown()
+void UVehicleLink::Shutdown()
 {
 	if (UDPWorker) {
 		UDPWorker->Stop();
