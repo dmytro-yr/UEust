@@ -42,6 +42,8 @@ public:
 	// TODO need avoid it, use command bus or dispatcher
 	FNetworkChannels* GetNetworkChannels() { return &NetworkChannels; }
 
+	int32 GetVehicleId() const { return VehicleId; }
+
 private:
 	void SpawnThread(FRunnable* Worker, const FString& Name, FRunnableThread*& OutThread);
 	void ShutdownThread(FRunnable* Worker, FRunnableThread*& OutThread);

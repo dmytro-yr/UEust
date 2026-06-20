@@ -15,3 +15,6 @@ DerivedDataCache/*
 Intermediate/*
 Saved/*
 *_BuiltData.uasset
+compile_commands.json
+*.sh
+launch.json

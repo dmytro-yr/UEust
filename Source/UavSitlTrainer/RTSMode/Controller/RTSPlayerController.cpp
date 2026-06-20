@@ -1,9 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "RTSPlayerController.h"
-#include "RTSMode/Controller/RTSPlayerController.h"
-#include "InputMappingContext.h"
 #include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
+#include "InputActionValue.h"
+#include "InputMappingContext.h"
 
 ARTSPlayerController::ARTSPlayerController()
 {
@@ -23,5 +24,22 @@ void ARTSPlayerController::SetupInputComponent()
 	if (Subsystem) {
 		Subsystem->AddMappingContext(DefaultInputMappingContext, 0);
 		UE_LOG(LogTemp, Display, TEXT("[ARTSPlayerController::SetupInputComponent] Input mapping context added"));
+	}
+
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent)) {
+		EnhancedInputComponent->BindAction(SelectAction, ETriggerEvent::Completed, this, &ARTSPlayerController::Select);
+	}
+}
+
+void ARTSPlayerController::Select(const FInputActionValue& Value)
+{
+
+	FHitResult HitResult;
+	GetHitResultUnderCursor(ECollisionChannel::ECC_Camera, false, HitResult);
+
+	AActor* SelectedVehicle = HitResult.GetActor();
+
+	if (SelectedVehicle) {
+		UE_LOG(LogTemp, Display, TEXT("[ARTSPlayerController::SelectAction] You select Vehicle %s"), *SelectedVehicle->GetName());
 	}
 }

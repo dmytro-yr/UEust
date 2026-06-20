@@ -6,7 +6,6 @@
 #include "Components/ActorComponent.h"
 #include "VehicleTelemetryComponent.generated.h"
 
-class ULinkManagerSubsystem;
 class UVehicleLink;
 class UPrimitiveComponent;
 
@@ -20,19 +19,12 @@ public:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SITL Network Config")
-	int32 VehicleId = 1;
-
 private:
 	UPROPERTY()
-	TObjectPtr<ULinkManagerSubsystem> LinkManager = nullptr;
+	TObjectPtr<UVehicleLink> VehicleLinkPtr = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UVehicleLink> VehicleLink = nullptr;
-
-	UPROPERTY()
-	TObjectPtr<UPrimitiveComponent> VehicleMesh = nullptr;
+	TObjectPtr<UPrimitiveComponent> VehicleMeshPtr = nullptr;
 
 	double	ElapsedTime = 0.0;
 	FVector PrevVelocity = FVector::ZeroVector;

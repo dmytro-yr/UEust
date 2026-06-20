@@ -24,9 +24,6 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SITL Network Config")
-	int32 VehicleId = 1;
-
 	UPROPERTY(BlueprintAssignable, Category = "SITL Network Config")
 	FOnMavLinkConnectionStatusChanged OnConnectionStatusChanged;
 
@@ -40,7 +37,7 @@ private:
 
 private:
 	UPROPERTY(Transient)
-	TObjectPtr<UVehicleLink> VehicleLink;
+	TObjectPtr<UVehicleLink> VehicleLinkPtr;
 
 	FTimerHandle HeartbeatTimer;
 	FTimerHandle TimeoutTimer;

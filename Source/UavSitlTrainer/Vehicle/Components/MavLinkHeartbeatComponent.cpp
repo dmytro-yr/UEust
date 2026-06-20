@@ -1,5 +1,5 @@
 #include "MavLinkHeartbeatComponent.h"
-#include "LinkManagerSubsystem.h"
+#include "Vehicle/VehiclePawn.h"
 #include "UAVNetwork/VehicleLink.h"
 #include "UAVNetwork/MavLinkFactStore.h"
 #include "UAVNetwork/OutboundDispatcher.h"
@@ -14,35 +14,27 @@ UMavLinkHeartbeatComponent::UMavLinkHeartbeatComponent()
 void UMavLinkHeartbeatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	const auto* World = GetWorld();
-
-	if (!World) {
+	const auto* VehiclePawn = Cast<AVehiclePawn>(GetOwner());
+	if (!VehiclePawn) {
+		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::BeginPlay] No VehiclePawn"));
 		return;
 	}
 
-	if (const UGameInstance* GI = World->GetGameInstance()) {
-		auto LinkManager = GI->GetSubsystem<ULinkManagerSubsystem>();
-		if (!LinkManager) {
-			UE_LOG(LogTemp, Warning, TEXT("[UMavLinkHeartbeatComponent::BeginPlay] Failed to get LinkManagerSubsystem"));
-			return;
-		}
-
-		VehicleLink = LinkManager->GetVehicleLink(VehicleId);
-	}
-
-	if (!VehicleLink) {
+	VehicleLinkPtr = VehiclePawn->GetVehicleLinkPtr();
+	int32 VehicleId = VehiclePawn->GetVehicleId();
+	if (!VehicleLinkPtr) {
 		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::BeginPlay] No VehicleLink for id %d"), VehicleId);
-		return;
 	}
 
-	VehicleLink->GetFactStore()->Status.OnAnyChanged.AddUObject(this, &UMavLinkHeartbeatComponent::OnStatusFactChanged);
-
-	World->GetTimerManager().SetTimer(
-		HeartbeatTimer,
-		this,
-		&UMavLinkHeartbeatComponent::SendHeartbeat,
-		HeartbeatInterval,
-		true);
+	VehicleLinkPtr->GetFactStore()->Status.OnAnyChanged.AddUObject(this, &UMavLinkHeartbeatComponent::OnStatusFactChanged);
+	if (auto World = GetWorld()) {
+		World->GetTimerManager().SetTimer(
+			HeartbeatTimer,
+			this,
+			&UMavLinkHeartbeatComponent::SendHeartbeat,
+			HeartbeatInterval,
+			true);
+	}
 }
 
 void UMavLinkHeartbeatComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
@@ -50,8 +42,8 @@ void UMavLinkHeartbeatComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
 	if (auto World = GetWorld()) {
 		World->GetTimerManager().ClearTimer(HeartbeatTimer);
 		World->GetTimerManager().ClearTimer(TimeoutTimer);
-		if (VehicleLink) {
-			VehicleLink->GetFactStore()->Status.OnAnyChanged.RemoveAll(this);
+		if (VehicleLinkPtr) {
+			VehicleLinkPtr->GetFactStore()->Status.OnAnyChanged.RemoveAll(this);
 		}
 	}
 
@@ -60,8 +52,9 @@ void UMavLinkHeartbeatComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
 
 void UMavLinkHeartbeatComponent::SendHeartbeat()
 {
-	if (!VehicleLink) {
-		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::SendHeartbeat] No VehicleLink for id %d"), VehicleId);
+	if (!VehicleLinkPtr) {
+		UE_LOG(LogTemp, Error, TEXT("[UMavLinkHeartbeatComponent::SendHeartbeat] The VehicleLink was not set."));
+		return;
 	}
 
 	mavlink_message_t	Msg;
@@ -72,9 +65,9 @@ void UMavLinkHeartbeatComponent::SendHeartbeat()
 	Data.autopilot = MAV_AUTOPILOT_INVALID;
 	Data.base_mode = 0;
 	Data.system_status = MAV_STATE_ACTIVE;
-	UE_LOG(LogTemp, Log, TEXT("CmdLog:[UMavLinkHeartbeatComponent::SendHeartbeat] Sended for VehicleLink with id %d"), VehicleId);
+	UE_LOG(LogTemp, Log, TEXT("[UMavLinkHeartbeatComponent::SendHeartbeat] Sended for VehicleLink with id %d"), VehicleLinkPtr->GetVehicleId());
 	mavlink_msg_heartbeat_encode(GCS_SYSTEM_ID, MAV_COMP_ID_MISSIONPLANNER, &Msg, &Data);
-	VehicleLink->GetOutboundDispatcher()->Enqueue(Msg);
+	VehicleLinkPtr->GetOutboundDispatcher()->Enqueue(Msg);
 }
 
 void UMavLinkHeartbeatComponent::OnStatusFactChanged(FName Key, float Value)
@@ -96,7 +89,7 @@ void UMavLinkHeartbeatComponent::OnStatusFactChanged(FName Key, float Value)
 	if (!bIsConnected) {
 		bIsConnected = true;
 		UE_LOG(LogTemp, Log,
-			TEXT("[UMavLinkHeartbeatComponent::OnStatusFactChanged] Vehicle %d connected."), VehicleId);
+			TEXT("[UMavLinkHeartbeatComponent::OnStatusFactChanged] Vehicle %d connected."), VehicleLinkPtr->GetVehicleId());
 		OnConnectionStatusChanged.Broadcast(true);
 	}
 }
@@ -105,7 +98,8 @@ void UMavLinkHeartbeatComponent::HandleConnectionTimeout()
 {
 	if (bIsConnected) {
 		bIsConnected = false;
-		UE_LOG(LogTemp, Warning, TEXT("[MavLinkHeartbeatComponent::HandleConnectionTimeout] VehicleId %d connection to ArduPilot lost(Timeout)."), VehicleId);
+		UE_LOG(LogTemp, Warning,
+			TEXT("[MavLinkHeartbeatComponent::HandleConnectionTimeout] VehicleId %d connection to ArduPilot lost(Timeout)."), VehicleLinkPtr->GetVehicleId());
 		OnConnectionStatusChanged.Broadcast(false);
 	}
 }

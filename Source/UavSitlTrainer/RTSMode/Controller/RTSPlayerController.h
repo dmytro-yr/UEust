@@ -7,6 +7,8 @@
 #include "RTSPlayerController.generated.h"
 
 class UInputMappingContext;
+class UInputAction;
+struct FInputActionValue;
 
 UCLASS()
 class UAVSITLTRAINER_API ARTSPlayerController : public APlayerController
@@ -20,4 +22,10 @@ public:
 
 protected:
 	virtual void SetupInputComponent() override;
+
+	void Select(const FInputActionValue& Value);
+
+private:
+	UPROPERTY(EditAnywhere, BluePrintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> SelectAction;
 };

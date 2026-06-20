@@ -50,19 +50,12 @@ public:
 private:
 	void ApplyMotorForces();
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SITL Network Config")
-	int32 VehicleId = 1;
-
 private:
 	UPROPERTY()
-	TObjectPtr<ULinkManagerSubsystem> LinkManager = nullptr;
+	TObjectPtr<UVehicleLink> VehicleLinkPtr = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UVehicleLink> VehicleLink = nullptr;
-
-	UPROPERTY()
-	TObjectPtr<UPrimitiveComponent> VehicleMesh = nullptr;
+	TObjectPtr<UPrimitiveComponent> VehicleMeshPtr = nullptr;
 	// Active automated rotor configurations
 	UPROPERTY(EditAnywhere, Category = "SITL Physics")
 	TArray<FVehicleRotorConfig> ActiveRotorConfigs;
