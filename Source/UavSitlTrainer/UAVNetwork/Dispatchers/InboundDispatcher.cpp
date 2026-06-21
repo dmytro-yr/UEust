@@ -2,12 +2,12 @@
 
 #include "InboundDispatcher.h"
 
-#include "ReceiveHandlers/MavHandlers/MavActuatorsOutputsHandler.h"
-#include "ReceiveHandlers/MavHandlers/MavAttitudeHandler.h"
-#include "ReceiveHandlers/MavHandlers/MavCommandAckHandler.h"
-#include "ReceiveHandlers/MavHandlers/MavHeartbeatHandler.h"
-#include "ReceiveHandlers/MavHandlers/MavParamValueHandler.h"
-#include "ReceiveHandlers/Handlers/ActuatorsOutputsHandler.h"
+#include "UAVNetwork/ReceiveHandlers/MavHandlers/MavActuatorsOutputsHandler.h"
+#include "UAVNetwork/ReceiveHandlers/MavHandlers/MavAttitudeHandler.h"
+#include "UAVNetwork/ReceiveHandlers/MavHandlers/MavCommandAckHandler.h"
+#include "UAVNetwork/ReceiveHandlers/MavHandlers/MavHeartbeatHandler.h"
+#include "UAVNetwork/ReceiveHandlers/MavHandlers/MavParamValueHandler.h"
+#include "UAVNetwork/ReceiveHandlers/Handlers/ActuatorsOutputsHandler.h"
 
 void UInboundDispatcher::Initialize(FNetworkChannels* InNetworkChannels, UMavLinkFactStore* InFactStore)
 {

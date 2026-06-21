@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Vehicle/VehiclePawn.h"
-#include "LinkManagerSubsystem.h"
+#include "VehiclePawn.h"
+#include "UAVNetwork/LinkManagerSubsystem.h"
 #include "UAVNetwork/VehicleLink.h"
 
 // Sets default values

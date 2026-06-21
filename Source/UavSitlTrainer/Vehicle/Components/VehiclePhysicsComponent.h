@@ -6,7 +6,6 @@
 #include "Components/ActorComponent.h"
 #include "VehiclePhysicsComponent.generated.h"
 
-class ULinkManagerSubsystem;
 class UVehicleLink;
 class UPrimitiveComponent;
 
@@ -56,6 +55,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UPrimitiveComponent> VehicleMeshPtr = nullptr;
+
 	// Active automated rotor configurations
 	UPROPERTY(EditAnywhere, Category = "SITL Physics")
 	TArray<FVehicleRotorConfig> ActiveRotorConfigs;

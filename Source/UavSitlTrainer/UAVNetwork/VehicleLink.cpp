@@ -1,8 +1,6 @@
 #include "VehicleLink.h"
-#include "UDPWorker.h"
-#include "TCPMavLinkWorker.h"
-#include "InboundDispatcher.h"
-#include "OutboundDispatcher.h"
+#include "Dispatchers/InboundDispatcher.h"
+#include "Dispatchers/OutboundDispatcher.h"
 
 bool UVehicleLink::Initialize(const FVehicleNetworkConfig& Config)
 {

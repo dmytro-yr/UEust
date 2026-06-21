@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Tickable.h"
-#include "UAVNetwork/NetworkTypes.h"
+#include "NetworkTypes.h"
 #include "LinkManagerSubsystem.generated.h"
 
 class UVehicleLink;

@@ -1,17 +1,17 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "RTSPlayerController.h"
+#include "UnifiedFlightController.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 
-ARTSPlayerController::ARTSPlayerController()
+AUnifiedFlightController::AUnifiedFlightController()
 {
 	bShowMouseCursor = true;
 }
 
-void ARTSPlayerController::SetupInputComponent()
+void AUnifiedFlightController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
@@ -23,15 +23,15 @@ void ARTSPlayerController::SetupInputComponent()
 
 	if (Subsystem) {
 		Subsystem->AddMappingContext(DefaultInputMappingContext, 0);
-		UE_LOG(LogTemp, Display, TEXT("[ARTSPlayerController::SetupInputComponent] Input mapping context added"));
+		UE_LOG(LogTemp, Display, TEXT("[AUnifiedFlightController::SetupInputComponent] Input mapping context added"));
 	}
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent)) {
-		EnhancedInputComponent->BindAction(SelectAction, ETriggerEvent::Completed, this, &ARTSPlayerController::Select);
+		EnhancedInputComponent->BindAction(SelectAction, ETriggerEvent::Completed, this, &AUnifiedFlightController::Select);
 	}
 }
 
-void ARTSPlayerController::Select(const FInputActionValue& Value)
+void AUnifiedFlightController::Select(const FInputActionValue& Value)
 {
 
 	FHitResult HitResult;
@@ -40,6 +40,6 @@ void ARTSPlayerController::Select(const FInputActionValue& Value)
 	AActor* SelectedVehicle = HitResult.GetActor();
 
 	if (SelectedVehicle) {
-		UE_LOG(LogTemp, Display, TEXT("[ARTSPlayerController::SelectAction] You select Vehicle %s"), *SelectedVehicle->GetName());
+		UE_LOG(LogTemp, Display, TEXT("[AUnifiedFlightController::SelectAction] You select Vehicle %s"), *SelectedVehicle->GetName());
 	}
 }

@@ -1,6 +1,6 @@
 // OutboundDispatcher.cpp
 #include "OutboundDispatcher.h"
-#include "MavLinkFactStore.h"
+#include "UAVNetwork/MavLinkFactStore.h"
 
 void UOutboundDispatcher::Initialize(FNetworkChannels* InNetworkChannels, UMavLinkFactStore* FactStore, int32 InVehicleId)
 {

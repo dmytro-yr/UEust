@@ -7,8 +7,8 @@
 #include "HAL/Runnable.h"
 #include "HAL/RunnableThread.h"
 #include "NetworkTypes.h"
-#include "UDPWorker.h"
-#include "TCPMavLinkWorker.h"
+#include "NetworkThreadWorkers/UDPWorker.h"
+#include "NetworkThreadWorkers/TCPMavLinkWorker.h"
 
 #include "VehicleLink.generated.h"
 

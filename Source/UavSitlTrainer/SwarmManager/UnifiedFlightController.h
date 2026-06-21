@@ -4,18 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "RTSPlayerController.generated.h"
+#include "UnifiedFlightController.generated.h"
 
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 
 UCLASS()
-class UAVSITLTRAINER_API ARTSPlayerController : public APlayerController
+class UAVSITLTRAINER_API AUnifiedFlightController : public APlayerController
 {
 	GENERATED_BODY()
 public:
-	ARTSPlayerController();
+	AUnifiedFlightController();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (AllowPrivateAcces = "true"))
 	UInputMappingContext* DefaultInputMappingContext;

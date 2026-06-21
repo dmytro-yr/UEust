@@ -2,7 +2,7 @@
 #include "Vehicle/VehiclePawn.h"
 #include "UAVNetwork/VehicleLink.h"
 #include "UAVNetwork/MavLinkFactStore.h"
-#include "UAVNetwork/OutboundDispatcher.h"
+#include "UAVNetwork/Dispatchers/OutboundDispatcher.h"
 
 // Sets default values for this component's properties
 UMavLinkHeartbeatComponent::UMavLinkHeartbeatComponent()

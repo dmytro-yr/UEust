@@ -4,14 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "RTSGameModeBase.generated.h"
+#include "UnifiedSimulationGameMode.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
-class UAVSITLTRAINER_API ARTSGameModeBase : public AGameModeBase
+class UAVSITLTRAINER_API AUnifiedSimulationGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
-	
 };

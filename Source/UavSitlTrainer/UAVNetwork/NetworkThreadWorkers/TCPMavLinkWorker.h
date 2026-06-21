@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ThreadWorkerBase.h"
-#include "NetworkTypes.h"
+#include "UAVNetwork/NetworkTypes.h"
 
 class FTCPMavLinkWorker : public FThreadWorkerBase
 {

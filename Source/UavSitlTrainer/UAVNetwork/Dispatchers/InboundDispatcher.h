@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
-#include "ReceiveHandlers/HandlerBase.h"
-#include "NetworkTypes.h"
-#include "MavLinkFactStore.h"
+#include "UAVNetwork/ReceiveHandlers/HandlerBase.h"
+#include "UAVNetwork/NetworkTypes.h"
+#include "UAVNetwork/MavLinkFactStore.h"
 
 #include "InboundDispatcher.generated.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
-#include "NetworkTypes.h"
+#include "UAVNetwork/NetworkTypes.h"
 #include "OutboundDispatcher.generated.h"
 
 class UMavLinkFactStore;

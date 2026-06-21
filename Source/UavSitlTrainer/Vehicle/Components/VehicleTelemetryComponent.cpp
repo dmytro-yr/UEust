@@ -5,7 +5,7 @@
 #include "Engine/World.h"
 #include "Vehicle/VehiclePawn.h"
 #include "UAVNetwork/VehicleLink.h"
-#include "UAVNetwork/OutboundDispatcher.h"
+#include "UAVNetwork/Dispatchers/OutboundDispatcher.h"
 
 // Sets default values
 UVehicleTelemetryComponent::UVehicleTelemetryComponent()
